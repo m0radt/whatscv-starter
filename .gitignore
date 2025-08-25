@@ -1,1 +1,16 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtualenvs
 .env/
+.venv/
+
+# VSCode
+.vscode/
+
+# Byte-compiled
+*.py[cod]
+*$py.class
