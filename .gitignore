@@ -4,13 +4,19 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Virtualenvs
-..env/
+# Virtual environments
+.env/
 .venv/
 
-# VSCode
+# Editor settings
 .vscode/
 
-# Byte-compiled
-*.py[cod]
-*$py.class
+# Docker-related
+*.log
+*.pid
+*.seed
+*.pid.lock
+.dockerignore
+
+# Environment / secrets
+.env
