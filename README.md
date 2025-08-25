@@ -1,4 +1,4 @@
-# whatscv-starter (Gemini-only)
+# whatscv-starter
 
 ### Local run
 1. Copy `.env.sample` to `.env` and fill secrets.
