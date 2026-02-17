@@ -13,7 +13,7 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/{candidate_id}", response_model=CandidateOut)
+@router.get("/{candidate_id:int}", response_model=CandidateOut)
 def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
     cand = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not cand:

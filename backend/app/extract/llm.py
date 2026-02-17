@@ -1,17 +1,30 @@
 import os
 import json
 from typing import Any, Dict, Optional
-import google.generativeai as genai
+from google import genai
 
 # --- JSON schema for structured output ---
 SCHEMA: Dict[str, Any] = {
     "type": "object",
     "properties": {
         "full_name": {"type": "string", "nullable": True},
+        "email": {"type": "string", "nullable": True},
+        "phone": {"type": "string", "nullable": True},
         "id_number": {"type": "string", "nullable": True},
-        "education_institution": {"type": "string", "nullable": True},
-        "education_level": {"type": "string", "nullable": True},
-        "year_of_study": {"type": "string", "nullable": True},
+        "education": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "institution": {"type": "string", "nullable": True},
+                    "degree": {"type": "string", "nullable": True},
+                    "major": {"type": "string", "nullable": True},
+                    "gpa": {"type": "string", "nullable": True},
+                    "status": {"type": "string", "enum": ["graduated", "attending"], "nullable": True},
+                    "expected_graduation_date": {"type": "string", "nullable": True},
+                },
+            },
+        },
         "location_city": {"type": "string", "nullable": True},
         "experiences": {
             "type": "array",
@@ -19,17 +32,16 @@ SCHEMA: Dict[str, Any] = {
                 "type": "object",
                 "properties": {
                     "company": {"type": "string", "nullable": True},
+                    "organization": {"type": "string", "nullable": True},
                     "title": {"type": "string", "nullable": True},
-                    "start": {"type": "string", "nullable": True},
-                    "end": {"type": "string", "nullable": True},
+                    "dates": {"type": "string", "nullable": True},
+                    "employment_status": {"type": "string", "enum": ["working", "finished"], "nullable": True},
                     "description": {"type": "string", "nullable": True},
                 },
-                "additionalProperties": False,
             },
         },
     },
-    "required": ["experiences"],
-    "additionalProperties": False,
+    "required": ["experiences", "education"],
 }
 
 SYSTEM = (
@@ -49,12 +61,12 @@ def _build_user_content(paragraph: Optional[str], cv_text: Optional[str]) -> str
     return "\n".join(parts)
 
 # --- Configure Gemini ---
-MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     raise RuntimeError("GEMINI_API_KEY is not set. Edit your .env.")
 
-genai.configure(api_key=API_KEY)
+CLIENT = genai.Client(api_key=API_KEY)
 GENERATION_CONFIG = {
     "response_mime_type": "application/json",
     "response_schema": SCHEMA,
@@ -63,10 +75,27 @@ GENERATION_CONFIG = {
 
 def extract_structured(paragraph: str, cv_text: Optional[str] = None) -> Dict[str, Any]:
     """Return a dict matching SCHEMA keys using Gemini structured output."""
-    model = genai.GenerativeModel(MODEL, generation_config=GENERATION_CONFIG)
-    resp = model.generate_content(_build_user_content(paragraph, cv_text))
+    try:
+        resp = CLIENT.models.generate_content(
+            model=MODEL,
+            contents=f"{SYSTEM}\n\n{_build_user_content(paragraph, cv_text)}",
+            config=GENERATION_CONFIG,
+        )
+    except Exception:
+        return {"experiences": [], "education": []}
+
     text = getattr(resp, "text", None) or "{}"
     try:
-        return json.loads(text)
+        data = json.loads(text)
+        if isinstance(data, dict):
+            experiences = data.setdefault("experiences", [])
+            if isinstance(experiences, list):
+                for exp in experiences:
+                    if isinstance(exp, dict):
+                        exp["company"] = exp.get("company") if exp.get("company") else exp.get("organization")
+                        exp.pop("organization", None)
+            data.setdefault("education", [])
+            return data
+        return {"experiences": [], "education": []}
     except json.JSONDecodeError:
-        return {"experiences": []}
+        return {"experiences": [], "education": []}

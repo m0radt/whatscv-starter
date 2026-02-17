@@ -1,9 +1,8 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from ..db import SessionLocal
-from ..models import Candidate, Experience
+from ..models import Candidate, Education
 
 router = APIRouter()
 
@@ -23,11 +22,11 @@ def search_candidates(
 ):
     q = db.query(Candidate)
     if education_level:
-        q = q.filter(Candidate.education_level.ilike(f"%{education_level}%"))
+        q = q.outerjoin(Education).filter(Education.degree.ilike(f"%{education_level}%"))
     if city:
         q = q.filter(Candidate.location_city.ilike(f"%{city}%"))
 
-    results = q.all()
+    results = q.distinct().all()
 
     # Simple skills filter: check experiences text fields for keywords
     if skills:
@@ -47,11 +46,18 @@ def search_candidates(
             {
                 "id": c.id,
                 "full_name": c.full_name,
-                "education": {
-                    "institution": c.education_institution,
-                    "level": c.education_level,
-                    "year_of_study": c.year_of_study,
-                },
+                "email": c.email,
+                "education": [
+                    {
+                        "institution": e.institution,
+                        "degree": e.degree,
+                        "major": e.major,
+                        "gpa": e.gpa,
+                        "status": e.status,
+                        "expected_graduation_date": e.expected_graduation_date,
+                    }
+                    for e in c.education
+                ],
                 "city": c.location_city,
                 "phone": c.phone,
             }
