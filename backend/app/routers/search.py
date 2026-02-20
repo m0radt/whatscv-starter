@@ -1,8 +1,9 @@
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Candidate, Education
+from ..schemas import CandidateSearchOut
 
 router = APIRouter()
 
@@ -13,7 +14,7 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/search")
+@router.get("/search", response_model=CandidateSearchOut)
 def search_candidates(
     skills: Optional[str] = None,
     education_level: Optional[str] = None,
@@ -40,27 +41,4 @@ def search_candidates(
                 filtered.append(c)
         results = filtered
 
-    return {
-        "count": len(results),
-        "items": [
-            {
-                "id": c.id,
-                "full_name": c.full_name,
-                "email": c.email,
-                "education": [
-                    {
-                        "institution": e.institution,
-                        "degree": e.degree,
-                        "major": e.major,
-                        "gpa": e.gpa,
-                        "status": e.status,
-                        "expected_graduation_date": e.expected_graduation_date,
-                    }
-                    for e in c.education
-                ],
-                "city": c.location_city,
-                "phone": c.phone,
-            }
-            for c in results
-        ],
-    }
+    return {"count": len(results), "items": results}

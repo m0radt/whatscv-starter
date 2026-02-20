@@ -35,3 +35,8 @@ class CandidateOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CandidateSearchOut(BaseModel):
+    count: int
+    items: List[CandidateOut]

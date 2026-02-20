@@ -11,7 +11,6 @@ Run this once after pulling latest changes:
 `docker compose exec -T db psql -U postgres -d whatscv < backend/migrations/0002_cleanup_schema.sql`
 
 ### Webhook setup
-- **Twilio Conversations**: Add a webhook for *message added* events pointing to `https://<your-host>/webhooks/twilio`.
 - **WhatsApp Cloud API (1:1)**:
   - Verify URL: `GET https://<your-host>/webhooks/whatsapp-cloud`
   - Callback URL: `POST https://<your-host>/webhooks/whatsapp-cloud`
@@ -26,7 +25,7 @@ WhatsApp → Webhook → (download CV) → Extract CV text → **Gemini JSON ext
 
 ### Security & privacy
 - `id_number` is **never stored in plaintext**; only a salted SHA‑256 hash is saved (see `security.py`).
-- Use HTTPS for all public endpoints; add Twilio signature verification before production.
+- Use HTTPS for all public endpoints.
 - Provide candidates with a privacy notice and a deletion request channel.
 
 ### Extending
