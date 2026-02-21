@@ -22,6 +22,18 @@ UPDATED_MESSAGE = "Your information was updated successfully. Thank you."
 FAIL_MESSAGE = "We could not process your CV. Please try again with a clear file."
 
 
+def _clean_env(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1].strip()
+    return value or None
+
+
 def _format_display_name(value: object) -> str:
     if not isinstance(value, str):
         return ""
@@ -41,7 +53,7 @@ def _safe_delete_file(path: pathlib.Path | None) -> None:
 
 
 async def _download_whatsapp_cloud_media(media_id: str, dest: pathlib.Path) -> None:
-    token = os.getenv("CLOUDAPI_TOKEN")
+    token = _clean_env("CLOUDAPI_TOKEN")
     if not token:
         raise HTTPException(status_code=500, detail="CLOUDAPI_TOKEN is not set")
 
@@ -59,8 +71,8 @@ async def _download_whatsapp_cloud_media(media_id: str, dest: pathlib.Path) -> N
 
 
 async def _send_whatsapp_cloud_text(to: str | None, text: str) -> bool:
-    token = os.getenv("CLOUDAPI_TOKEN")
-    phone_number_id = os.getenv("WABA_PHONE_NUMBER_ID")
+    token = _clean_env("CLOUDAPI_TOKEN")
+    phone_number_id = _clean_env("WABA_PHONE_NUMBER_ID")
     if not token or not phone_number_id or not to:
         return False
 
@@ -81,6 +93,20 @@ async def _send_whatsapp_cloud_text(to: str | None, text: str) -> bool:
             )
             resp.raise_for_status()
         return True
+    except httpx.HTTPStatusError as exc:
+        details = ""
+        try:
+            details = exc.response.text
+        except Exception:
+            details = "<unavailable>"
+        logger.warning(
+            "Unable to send WhatsApp Cloud reply (status=%s, phone_number_id=%s): %s | body=%s",
+            exc.response.status_code,
+            phone_number_id,
+            exc,
+            details,
+        )
+        return False
     except httpx.HTTPError as exc:
         logger.warning("Unable to send WhatsApp Cloud reply: %s", exc)
         return False
